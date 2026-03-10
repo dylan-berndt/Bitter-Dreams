@@ -5,7 +5,7 @@
     "numHeads": 4,
     "encoderLayers": 4,
     "decoderLayers": 4,
-
+    
     "numConcepts": 128,
     "strokeActionSize": 8,
 
@@ -24,11 +24,16 @@
     "includeStepReward": false,
     "stepRewardWeight": 0.1,
     "dissimilarityWeight": 0.4,
-    
+
     "maxStrokes": 8,
     "rolloutEpisodes": 32,
 
     "totalUpdates": 1000,
-    "numAgents": 16,
-    "lr": 3e-4
+    "numAgents": 4,
+    "lr": 3e-4,
+    "batchSize": 4,
+    "nEpochs": 4,
+
+    "burnInSteps": 10,
+    "burnInBatchSize": 32
 }

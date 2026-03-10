@@ -65,6 +65,7 @@ class Painter(nn.Module):
             nn.Linear(config.embedDim // 2, 1)
         )
 
+    # TODO: Consider contrastive loss instead of fixed number of concepts
     def discriminate(self, image):
         x = self.patch(image)
         x = torch.cat([x, self.discToken.expand(x.shape[0], 1, -1)], dim=1)
