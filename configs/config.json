@@ -1,0 +1,34 @@
+{
+    "embedDim": 256,
+    "imageSize": 32,
+    "patchSize": 4,
+    "numHeads": 4,
+    "encoderLayers": 4,
+    "decoderLayers": 4,
+
+    "numConcepts": 128,
+    "strokeActionSize": 8,
+
+    "poolSize": 64,
+    "samplesPerConcept": 4,
+
+    "clip": 0.2,
+    "valueCoefficient": 0.5,
+    "entropyCoefficient": 0.01,
+    "epochs": 4,
+    "gradNorm": 0.5,
+
+    "gamma": 0.99,
+    "gaeLambda": 0.95,
+
+    "includeStepReward": false,
+    "stepRewardWeight": 0.1,
+    "dissimilarityWeight": 0.4,
+    
+    "maxStrokes": 8,
+    "rolloutEpisodes": 32,
+
+    "totalUpdates": 1000,
+    "numAgents": 16,
+    "lr": 3e-4
+}

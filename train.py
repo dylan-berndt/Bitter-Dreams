@@ -1,0 +1,1 @@
+# TODO: All the training logic, and a little visualizer to check what the models are producing
