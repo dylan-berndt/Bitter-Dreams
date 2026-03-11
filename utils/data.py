@@ -4,6 +4,8 @@ import numpy as np
 from dataclasses import dataclass, field
 from collections import deque
 import random
+import os
+
 from .config import Config
 
 
@@ -97,6 +99,23 @@ class ConceptPool:
             images.append(choice[0])
 
         return torch.stack(images), torch.tensor(conceptIDs, dtype=torch.long)
+    
+    def saveSnapshot(self, step, directory="snapshots"):
+        os.makedirs(directory, exist_ok=True)
+
+        snapshot = {}
+        agentIDs = {}
+        for conceptID, pool in enumerate(self.pools):
+            if pool:
+                snapshot[conceptID] = torch.stack([item[0] for item in pool])
+                agentIDs[conceptID] = torch.stack([item[1] for item in pool])
+
+        torch.save({
+            "step": step,
+            "config": self.config,
+            "concepts": snapshot,
+            "agents": agentIDs 
+        }, os.path.join(directory, f"pool{step:05d}.pt"))
 
     def _initialize(self):
         canvases = torch.ones([self.config.numConcepts * self.config.samplesPerConcept, 3, self.config.imageSize, self.config.imageSize])

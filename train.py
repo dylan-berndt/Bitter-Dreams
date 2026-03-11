@@ -29,6 +29,7 @@ def train(config: Config, device: str = "cuda:0"):
     
     print("Generating random canvases")
     pool = ConceptPool(config)
+    pool.saveSnapshot(step=0)
 
     print("Pretraining discriminators")
     for i in range(config.burnInSteps):
@@ -64,6 +65,8 @@ def train(config: Config, device: str = "cuda:0"):
                 pool.push(conceptIDs.cpu(), finishedCanvas, agentIdx)
 
             print(f"\rAgent {agentIdx} generation complete", end="")
+
+        pool.saveSnapshot(step=update + 1)
 
         # ----------------------------------------------------------------
         # PPO UPDATE — one agent at a time

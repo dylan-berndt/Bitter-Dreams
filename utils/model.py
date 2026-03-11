@@ -25,7 +25,7 @@ class Painter(nn.Module):
 
         self.patch = PatchEmbed(config.imageSize, config.patchSize, embedDim=config.embedDim)
         self.encoderPos = nn.Parameter(torch.zeros(1, self.patch.numPatches + 1, config.embedDim))
-        self.decoderPos = nn.Parameter(torch.zeros(1, self.patch.numPatches + 1, config.embedDim))
+        self.decoderPos = nn.Parameter(torch.zeros(1, self.patch.numPatches + 2, config.embedDim))
 
         encoderLayer = nn.TransformerEncoderLayer(
             d_model=config.embedDim, nhead=config.numHeads, dim_feedforward=config.embedDim * 4, 
@@ -47,6 +47,7 @@ class Painter(nn.Module):
 
         self.discToken = nn.Parameter(torch.zeros([1, 1, config.embedDim]))
         self.actToken = nn.Parameter(torch.zeros([1, 1, config.embedDim]))
+        self.criticToken = nn.Parameter(torch.zeros([1, 1, config.embedDim]))
         
         self.norm1 = nn.LayerNorm(config.embedDim)
         self.norm2 = nn.LayerNorm(config.embedDim)
@@ -81,16 +82,19 @@ class Painter(nn.Module):
         x = self.encoder(x)
 
         y = self.patch(canvas)
-        y = torch.cat([y, self.actToken.expand(x.shape[0], 1, -1)], dim=1)
+        y = torch.cat([y, self.actToken.expand(x.shape[0], 1, -1), self.criticToken.expand(x.shape[0], 1, -1)], dim=1)
         y = y + self.decoderPos
-        y = self.norm2(self.decoder(tgt=y, memory=x)[:, -1])
+        y = self.norm2(self.decoder(tgt=y, memory=x))
 
-        raw = self.genHead(y)
+        actEmb = y[:, -2]
+        criticEmb = y[:, -1]
+
+        raw = self.genHead(actEmb)
         mean, logDev = raw.chunk(2, dim=-1)
         mean = torch.tanh(mean)
         logDev = logDev.clamp(-4, 2)
         dist = Normal(mean, logDev.exp())
 
-        value = self.criticHead(y)
+        value = self.criticHead(criticEmb)
 
         return dist, value
