@@ -14,7 +14,7 @@ def train(config: Config, device: str = "cuda:0"):
                     list(a.norm2.parameters()) +
                     list(a.genHead.parameters()) +
                     list(a.criticHead.parameters()) +
-                    [a.encoderPos, a.decoderPos, a.actToken],
+                    [a.encoderPos, a.decoderPos, a.actToken, a.criticToken],
                     lr=config.lr)
                 for a in agents]
 
