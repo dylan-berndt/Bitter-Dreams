@@ -98,37 +98,42 @@ def ppoUpdate(
     advantages = advantages.to(device)
     returns = returns.to(device)
 
+    N = canvases.shape[0]
+
     stats = {"policyLoss": [], "valueLoss": [], "entropy": []}
 
     for _ in range(config.nEpochs):
-        dist, values = agent.act(canvases, concepts)
+        indices = torch.randperm(N)
+        for start in range(0, N, config.miniBatchSize):
+            idx = indices[start:start + config.miniBatchSize]
+            dist, values = agent.act(canvases[idx], concepts[idx])
 
-        newLogProbs = dist.log_prob(actions).sum(-1)
-        entropy     = dist.entropy().mean()
+            newLogProbs = dist.log_prob(actions[idx]).sum(-1)
+            entropy     = dist.entropy().mean()
 
-        ratio  = (newLogProbs - oldLogProbs).exp()
-        surr1  = ratio * advantages
-        surr2  = ratio.clamp(1 - config.clip, 1 + config.clip) * advantages
-        policyLoss = -torch.min(surr1, surr2).mean()
+            ratio  = (newLogProbs - oldLogProbs[idx]).exp()
+            surr1  = ratio * advantages[idx]
+            surr2  = ratio.clamp(1 - config.clip, 1 + config.clip) * advantages[idx]
+            policyLoss = -torch.min(surr1, surr2).mean()
 
-        values         = values.squeeze(-1)
-        valuesClipped  = oldValues.squeeze(-1) + \
-                         (values - oldValues.squeeze(-1)).clamp(-config.clip, config.clip)
-        valueLoss = torch.max(
-            nn.functional.mse_loss(values, returns),
-            nn.functional.mse_loss(valuesClipped, returns),
-        )
+            values         = values.squeeze(-1)
+            valuesClipped  = oldValues[idx].squeeze(-1) + \
+                            (values - oldValues[idx].squeeze(-1)).clamp(-config.clip, config.clip)
+            valueLoss = torch.max(
+                nn.functional.mse_loss(values, returns[idx]),
+                nn.functional.mse_loss(valuesClipped, returns[idx]),
+            )
 
-        loss = policyLoss + config.valueCoefficient * valueLoss - config.entropyCoefficient * entropy
+            loss = policyLoss + config.valueCoefficient * valueLoss - config.entropyCoefficient * entropy
 
-        optimizer.zero_grad()
-        loss.backward()
-        nn.utils.clip_grad_norm_(agent.parameters(), config.gradNorm)
-        optimizer.step()
+            optimizer.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(agent.parameters(), config.gradNorm)
+            optimizer.step()
 
-        stats["policyLoss"].append(policyLoss.item())
-        stats["valueLoss"].append(valueLoss.item())
-        stats["entropy"].append(entropy.item())
+            stats["policyLoss"].append(policyLoss.item())
+            stats["valueLoss"].append(valueLoss.item())
+            stats["entropy"].append(entropy.item())
 
     return {k: float(np.mean(v)) for k, v in stats.items()}
 

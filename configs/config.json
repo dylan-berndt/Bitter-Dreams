@@ -9,8 +9,8 @@
     "numConcepts": 128,
     "strokeActionSize": 8,
 
-    "poolSize": 64,
-    "samplesPerConcept": 4,
+    "poolSize": 128,
+    "samplesPerConcept": 32,
 
     "clip": 0.2,
     "valueCoefficient": 0.5,
@@ -32,8 +32,9 @@
     "numAgents": 4,
     "lr": 3e-4,
     "batchSize": 4,
+    "miniBatchSize": 16,
     "nEpochs": 4,
 
-    "burnInSteps": 10,
+    "burnInSteps": 50,
     "burnInBatchSize": 32
 }

@@ -90,7 +90,6 @@ def train(config: Config, device: str = "cuda:0"):
                 f"policy={stats['policyLoss']:.4f} | "
                 f"value={stats['valueLoss']:.4f} | "
                 f"entropy={stats['entropy']:.4f} | "
-                f"pool={len(pool)}"
             )
 
         print(f"\rStep {update}/{config.totalUpdates} complete", end="")

@@ -23,15 +23,15 @@ class RolloutBuffer:
     def __init__(self, config: Config):
         self.config = config
         self.transitions: list[Transition] = []
-        self._episode_start_idx = 0
+        self._episodeStart = 0
 
     def push(self, t: Transition):
         self.transitions.append(t)
 
     def endEpisode(self, value: torch.Tensor):
-        episode = self.transitions[self._episode_start_idx:]
+        episode = self.transitions[self._episodeStart:]
         self._compute_gae(episode, value)
-        self._episode_start_idx = len(self.transitions)
+        self._episodeStart = len(self.transitions)
 
     def _compute_gae(self, episode: list[Transition], value: torch.Tensor):
         gae = 0
