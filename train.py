@@ -19,11 +19,11 @@ def train(config: Config, device: str = "cuda:0"):
                 for a in agents]
 
     discOpts = [torch.optim.Adam(
-                    list(a.patch.parameters()) +
-                    list(a.encoder.parameters()) +
+                    list(a.discPatch.parameters()) +
+                    list(a.discEncoder.parameters()) +
                     list(a.norm1.parameters()) +
                     list(a.discHead.parameters()) +
-                    [a.encoderPos, a.discToken],
+                    [a.discPos, a.discToken],
                     lr=config.lr)
                 for a in agents]
     

@@ -5,6 +5,7 @@
     "numHeads": 4,
     "encoderLayers": 4,
     "decoderLayers": 4,
+    "discriminatorLayers": 6,
     
     "numConcepts": 32,
     "strokeActionSize": 8,

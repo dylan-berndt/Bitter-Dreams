@@ -24,8 +24,11 @@ class Painter(nn.Module):
         super().__init__()
 
         self.patch = PatchEmbed(config.imageSize, config.patchSize, embedDim=config.embedDim)
-        self.encoderPos = nn.Parameter(torch.zeros(1, self.patch.numPatches + 1, config.embedDim))
+        self.discPatch = PatchEmbed(config.imageSize, config.patchSize, embedDim=config.embedDim)
+
+        self.encoderPos = nn.Parameter(torch.zeros(1, self.patch.numPatches, config.embedDim))
         self.decoderPos = nn.Parameter(torch.zeros(1, self.patch.numPatches + 2, config.embedDim))
+        self.discPos = nn.Parameter(torch.zeros(1, self.patch.numPatches + 1, config.embedDim))
 
         encoderLayer = nn.TransformerEncoderLayer(
             d_model=config.embedDim, nhead=config.numHeads, dim_feedforward=config.embedDim * 4, 
@@ -43,6 +46,10 @@ class Painter(nn.Module):
 
         self.decoder = nn.TransformerDecoder(
             decoderLayer, num_layers=config.decoderLayers
+        )
+
+        self.discEncoder = nn.TransformerEncoder(
+            encoderLayer, num_layers=config.discriminatorLayers
         )
 
         self.discToken = nn.Parameter(torch.zeros([1, 1, config.embedDim]))
@@ -68,13 +75,12 @@ class Painter(nn.Module):
 
     # TODO: Consider contrastive loss instead of fixed number of concepts
     def discriminate(self, image):
-        x = self.patch(image)
+        x = self.discPatch(image)
         x = torch.cat([x, self.discToken.expand(x.shape[0], 1, -1)], dim=1)
-        x = x + self.encoderPos
-        x = self.encoder(x)
+        x = x + self.discPos
+        x = self.discEncoder(x)
         x = self.norm1(x[:, -1])
-        x = self.discHead(x)
-        return x
+        return self.discHead(x)
 
     def act(self, canvas, conceptImage):
         x = self.patch(conceptImage)
