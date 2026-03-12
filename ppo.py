@@ -40,7 +40,7 @@ def denseReward(canvas, prevCanvas, peers: list[Painter], conceptID, config):
 
             deltas.append(canvasLP - baselineLP)
 
-        return config.stepRewardWeight * torch.mean(deltas).item()
+        return config.stepRewardWeight * torch.mean(torch.stack(deltas)).item()
     
 
 def runEpisode(agent: Painter, concepts: torch.Tensor, conceptIDs: torch.Tensor, peers: list[Painter], pool: ConceptPool, config: Config, device: str):
@@ -145,15 +145,17 @@ def discriminatorUpdate(
     config:     Config,
     device:     str
 ):
-    # TODO: Better random sampling?
-    images, labels = pool.sample(config.burnInBatchSize)
+    for agentIdx, (agent, optimizer) in enumerate(zip(agents, optimizers)):
+        images, labels = pool.sample(config.burnInBatchSize, excludeAgent=agentIdx)
+        
+        if images is None:
+            continue
 
-    images = images.to(device)
-    labels = labels.to(device)
+        images = images.to(device)
+        labels = labels.to(device)
 
-    for agent, optimizer in zip(agents, optimizers):
         logits = agent.discriminate(images)
-        loss = nn.functional.cross_entropy(logits, labels)
+        loss   = nn.functional.cross_entropy(logits, labels)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

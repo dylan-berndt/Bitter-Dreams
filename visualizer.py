@@ -13,7 +13,7 @@ def listSnapshots(snapshotDir: str) -> list[str]:
 
 @st.cache_data
 def loadSnapshot(path: str) -> dict:
-    return torch.load(path, map_location="cpu")
+    return torch.load(path, map_location="cpu", weights_only=False)
 
 
 def tensorToNumpy(t: torch.Tensor) -> np.ndarray:
@@ -69,7 +69,7 @@ def main():
     snapshot = loadSnapshot(selectedPath)
     step = snapshot["step"]
     concepts = snapshot["concepts"]   # dict: conceptID -> (N, 3, H, W)
-    agentIDs = snapshot["agentIDs"]
+    agentIDs = snapshot["agents"]
     numConcepts = max(concepts.keys()) + 1 if concepts else 0
 
     # Top-level stats
@@ -80,9 +80,13 @@ def main():
 
     st.divider()
 
+    uniqueAgents = set()
+    for agents in agentIDs.values():
+        uniqueAgents.update(list(agents.numpy()))
+
     with st.sidebar:
         st.header("Filter")
-        visibleAgents = st.multiselect("Agent IDs", list(agentIDs.keys()), default=[])
+        visibleAgents = st.multiselect("Agent IDs", list(uniqueAgents), default=list(uniqueAgents))
 
         filterMode = st.radio("Show", ["All concepts", "Select range", "Select specific"])
 
@@ -97,13 +101,16 @@ def main():
     # Render each concept
     imageSize = None
     for conceptID in visibleIDs:
-        agentMask = agentIDs[conceptID].isin(visibleAgents)
-        agents = agentIDs[agentMask]
+        agentMask = torch.tensor(np.isin(agentIDs[conceptID].numpy(), visibleAgents), dtype=torch.bool)
+        agents = agentIDs[conceptID][agentMask]
 
         images = concepts[conceptID][agentMask]    # (N, 3, H, W)
         H, W = images.shape[-2], images.shape[-1]
         imageSize = (H, W)
         N = images.shape[0]
+
+        if len(images) == 0:
+            continue
 
         with st.expander(f"Concept {conceptID}  —  {N} images", expanded=True):
             npImages = renderConceptGrid(images, maxCols=maxCols)
@@ -113,7 +120,7 @@ def main():
                 # Scale up small images so they're visible
                 scaledH = H * imageScale
                 scaledW = W * imageScale
-                col.header(f"Agent {agents[i] + 1}")
+                col.text(f"Agent {agents[i]}")
                 col.image(img, width=scaledW)
 
     if imageSize:

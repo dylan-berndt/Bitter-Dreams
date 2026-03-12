@@ -34,7 +34,15 @@ def train(config: Config, device: str = "cuda:0"):
     print("Pretraining discriminators")
     for i in range(config.burnInSteps):
         discriminatorUpdate(agents, pool, discOpts, config, device)
-        print(f"\r{i + 1}/{config.burnInSteps}", end="")
+
+        if i % 5 == 0:
+            images, labels = pool.sample(config.burnInBatchSize)
+            with torch.no_grad():
+                logits = agents[0].discriminate(images.to(device))
+                probs = nn.functional.softmax(logits, dim=-1)
+                maxConf = probs.max(dim=-1).values.mean().item()
+
+        print(f"\r{i + 1}/{config.burnInSteps} Max Confidence: {maxConf:.4f}", end="")
 
     print()
 
@@ -49,7 +57,7 @@ def train(config: Config, device: str = "cuda:0"):
             peers = [a for i, a in enumerate(agents) if i != agentIdx]
 
             for _ in range(config.rolloutEpisodes):
-                concepts, conceptIDs = pool.sample(config.batchSize)
+                concepts, conceptIDs = pool.sample(config.batchSize, agentIdx)
                 concepts, conceptIDs = concepts.to(device), conceptIDs.to(device)
 
                 transitions, nextValue = runEpisode(

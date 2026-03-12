@@ -6,10 +6,10 @@
     "encoderLayers": 4,
     "decoderLayers": 4,
     
-    "numConcepts": 128,
+    "numConcepts": 32,
     "strokeActionSize": 8,
 
-    "poolSize": 128,
+    "poolSize": 256,
     "samplesPerConcept": 32,
 
     "clip": 0.2,
@@ -22,8 +22,8 @@
     "gaeLambda": 0.95,
 
     "includeStepReward": false,
-    "stepRewardWeight": 0.1,
-    "dissimilarityWeight": 0.4,
+    "stepRewardWeight": 0.2,
+    "dissimilarityWeight": 0,
 
     "maxStrokes": 8,
     "rolloutEpisodes": 32,
@@ -35,6 +35,6 @@
     "miniBatchSize": 16,
     "nEpochs": 4,
 
-    "burnInSteps": 50,
+    "burnInSteps": 100,
     "burnInBatchSize": 32
 }
