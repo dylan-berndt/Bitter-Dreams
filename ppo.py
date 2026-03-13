@@ -2,29 +2,27 @@ from utils import *
 import numpy as np
 
 
-def softmaxReward(finishedCanvas, conceptImage, peers: list[Painter], conceptID, config):
+def softmaxReward(finishedCanvas, conceptImage, peers, conceptIDs, config):
     with torch.no_grad():
-        peerLogProbs = []
+        B = finishedCanvas.shape[0]
+        idx = torch.arange(B)
+        peerProbs = []
 
         for peer in peers:
-            canvasLogits = peer.discriminate(finishedCanvas)
+            probs = nn.functional.softmax(peer.discriminate(finishedCanvas), dim=-1)
+            peerProbs.append(probs[idx, conceptIDs])
 
-            canvasLP = nn.functional.softmax(canvasLogits, dim=-1)[0, conceptID]
+        recognitionReward = torch.stack(peerProbs).mean(dim=0)
 
-            peerLogProbs.append(canvasLP)
-
-        diversityBonus = 0.0
-        # L2 pixel distance, replace with lpips.LPIPS for perceptual distance
         diff = (finishedCanvas - conceptImage).pow(2).mean(dim=[1, 2, 3])
-        diversityBonus = diff.mean().item()
 
-        recognitionReward = torch.mean(torch.stack(peerLogProbs)).item()
-
-        return recognitionReward + config.dissimilarityWeight * diversityBonus
+        return recognitionReward + config.dissimilarityWeight * diff
 
 
 def terminalReward(finishedCanvas, conceptImage, peers: list[Painter], conceptID, config):
     with torch.no_grad():
+        B = finishedCanvas.shape[0]
+        idx = torch.arange(B)
         peerLogProbs = []
         baselineLogProbs = []
 
@@ -32,36 +30,36 @@ def terminalReward(finishedCanvas, conceptImage, peers: list[Painter], conceptID
             canvasLogits = peer.discriminate(finishedCanvas)
             baselineLogits = peer.discriminate(conceptImage)
 
-            canvasLP = nn.functional.softmax(canvasLogits, dim=-1)[0, conceptID]
-            baselineLP = nn.functional.softmax(baselineLogits, dim=-1)[0, conceptID]
+            canvasLP = nn.functional.softmax(canvasLogits, dim=-1)[idx, conceptID]
+            baselineLP = nn.functional.softmax(baselineLogits, dim=-1)[idx, conceptID]
 
             peerLogProbs.append(canvasLP)
             baselineLogProbs.append(baselineLP)
 
-        diversityBonus = 0.0
         # L2 pixel distance, replace with lpips.LPIPS for perceptual distance
         diff = (finishedCanvas - conceptImage).pow(2).mean(dim=[1, 2, 3])
-        diversityBonus = diff.mean().item()
 
-        recognitionReward = (torch.mean(torch.stack(peerLogProbs)) - torch.mean(torch.stack(baselineLogProbs))).item()
+        recognitionReward = torch.stack(peerLogProbs).mean(dim=0) - torch.stack(baselineLogProbs).mean(dim=0)
 
-        return recognitionReward + config.dissimilarityWeight * diversityBonus
+        return recognitionReward + config.dissimilarityWeight * diff
     
 
 def denseReward(canvas, prevCanvas, peers: list[Painter], conceptID, config):
     with torch.no_grad():
+        B = canvas.shape[0]
+        idx = torch.arange(B)
         deltas = []
 
         for peer in peers:
             canvasLogits = peer.discriminate(canvas)
             baselineLogits = peer.discriminate(prevCanvas)
 
-            canvasLP = nn.functional.softmax(canvasLogits, dim=-1)[0, conceptID]
-            baselineLP = nn.functional.softmax(baselineLogits, dim=-1)[0, conceptID]
+            canvasLP = nn.functional.softmax(canvasLogits, dim=-1)[idx, conceptID]
+            baselineLP = nn.functional.softmax(baselineLogits, dim=-1)[idx, conceptID]
 
             deltas.append(canvasLP - baselineLP)
 
-        return config.stepRewardWeight * torch.mean(torch.stack(deltas)).item()
+        return config.stepRewardWeight * torch.stack(deltas).mean(dim=0)
     
 
 def runEpisode(agent: Painter, concepts: torch.Tensor, conceptIDs: torch.Tensor, peers: list[Painter], pool: ConceptPool, config: Config, device: str):
@@ -86,7 +84,7 @@ def runEpisode(agent: Painter, concepts: torch.Tensor, conceptIDs: torch.Tensor,
         elif config.includeStepReward:
             reward = denseReward(canvases, prevCanvases, peers, conceptIDs, config)
         else:
-            reward = 0
+            reward = torch.zeros(canvases.shape[0])
 
         transitions.append(Transition(
             canvas  = canvases.cpu(),
