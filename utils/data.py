@@ -88,9 +88,9 @@ class ConceptPool:
 
         self._initialize()
 
-    def push(self, conceptIDs, images, agentIdx):
+    def push(self, conceptIDs, images, agentIdx, step):
         for (image, conceptID) in zip(images.cpu(), conceptIDs.cpu()):
-            self.pools[conceptID].append((image, agentIdx))
+            self.pools[conceptID].append((image, agentIdx, step))
 
     def sample(self, numSamples, excludeAgent=None):
         conceptIDs = random.choices(list(range(len(self.pools))), k=numSamples)
@@ -105,7 +105,7 @@ class ConceptPool:
                 candidates = list(pool)
             images.append(random.choice(candidates)[0])
 
-        return torch.stack(images), torch.tensor(conceptIDs, dtype=torch.long)
+        return (torch.stack(images) - 0.5) / 0.5, torch.tensor(conceptIDs, dtype=torch.long)
     
     def saveSnapshot(self, step, directory="snapshots"):
         os.makedirs(directory, exist_ok=True)
@@ -113,9 +113,9 @@ class ConceptPool:
         snapshot = {}
         agentIDs = {}
         for conceptID, pool in enumerate(self.pools):
-            if pool:
-                snapshot[conceptID] = torch.stack([item[0] for item in pool])
-                agentIDs[conceptID] = torch.tensor([item[1] for item in pool], dtype=torch.long)
+            if pool and len([item[0] for item in pool if item[2] == step]) > 0:
+                snapshot[conceptID] = torch.stack([item[0] for item in pool if item[2] == step])
+                agentIDs[conceptID] = torch.tensor([item[1] for item in pool if item[2] == step], dtype=torch.long)
 
         torch.save({
             "step": step,
@@ -127,17 +127,15 @@ class ConceptPool:
     def _initialize(self):
         for conceptID in range(self.config.numConcepts):
             hue = random.random()
+            angle = random.random()
             for sample in range(self.config.samplesPerConcept):
-                canvas = randomCanvas(self.config.imageSize, self.config.maxStrokes, hue)
-                self.pools[conceptID].append((canvas.cpu(), -1))
+                canvas = randomCanvas(self.config.imageSize, self.config.maxStrokes, hue, angle)
+                self.pools[conceptID].append((canvas.cpu(), -1, 0))
 
 
-def randomCanvas(imageSize, maxStrokes, hue):
+def randomCanvas(imageSize, maxStrokes, hue, angleBias):
     canvas = torch.ones(1, 3, imageSize, imageSize)
     r, g, b = colorsys.hsv_to_rgb(hue, 0.8, 0.7)
-
-    # Spread concepts evenly across stroke angle bias
-    angleBias = random.random()                  # 0.0 to 1.0
 
     for _ in range(maxStrokes):
         # Position: random but within the canvas

@@ -84,7 +84,7 @@ class Painter(nn.Module):
 
     def act(self, canvas, conceptImage):
         x = self.patch(conceptImage)
-        x = x + self.encoderPos[:, :-1]
+        x = x + self.encoderPos
         x = self.encoder(x)
 
         y = self.patch(canvas)
@@ -98,7 +98,7 @@ class Painter(nn.Module):
         raw = self.genHead(actEmb)
         mean, logDev = raw.chunk(2, dim=-1)
         mean = torch.tanh(mean)
-        logDev = logDev.clamp(-4, 2)
+        logDev = logDev.clamp(-1, 1)
         dist = Normal(mean, logDev.exp())
 
         value = self.criticHead(criticEmb)

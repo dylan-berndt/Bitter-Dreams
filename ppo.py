@@ -2,6 +2,27 @@ from utils import *
 import numpy as np
 
 
+def softmaxReward(finishedCanvas, conceptImage, peers: list[Painter], conceptID, config):
+    with torch.no_grad():
+        peerLogProbs = []
+
+        for peer in peers:
+            canvasLogits = peer.discriminate(finishedCanvas)
+
+            canvasLP = nn.functional.softmax(canvasLogits, dim=-1)[0, conceptID]
+
+            peerLogProbs.append(canvasLP)
+
+        diversityBonus = 0.0
+        # L2 pixel distance, replace with lpips.LPIPS for perceptual distance
+        diff = (finishedCanvas - conceptImage).pow(2).mean(dim=[1, 2, 3])
+        diversityBonus = diff.mean().item()
+
+        recognitionReward = torch.mean(torch.stack(peerLogProbs)).item()
+
+        return recognitionReward + config.dissimilarityWeight * diversityBonus
+
+
 def terminalReward(finishedCanvas, conceptImage, peers: list[Painter], conceptID, config):
     with torch.no_grad():
         peerLogProbs = []
@@ -61,7 +82,7 @@ def runEpisode(agent: Painter, concepts: torch.Tensor, conceptIDs: torch.Tensor,
         canvases = drawStroke(canvases, stroke)
 
         if isTerminal:
-            reward = terminalReward(canvases, concepts, peers, conceptIDs, config)
+            reward = softmaxReward(canvases, concepts, peers, conceptIDs, config)
         elif config.includeStepReward:
             reward = denseReward(canvases, prevCanvases, peers, conceptIDs, config)
         else:
@@ -124,7 +145,10 @@ def ppoUpdate(
                 nn.functional.mse_loss(valuesClipped, returns[idx]),
             )
 
-            loss = policyLoss + config.valueCoefficient * valueLoss - config.entropyCoefficient * entropy
+            minEntropy = 0.5
+            entropyLoss = nn.functional.relu(minEntropy - entropy)
+
+            loss = policyLoss + config.valueCoefficient * valueLoss - config.entropyCoefficient * entropyLoss
 
             optimizer.zero_grad()
             loss.backward()

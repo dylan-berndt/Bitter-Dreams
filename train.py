@@ -70,7 +70,8 @@ def train(config: Config, device: str = "cuda:0"):
 
                 # Push finished canvas to shared pool
                 finishedCanvas = transitions[-1].canvas
-                pool.push(conceptIDs.cpu(), finishedCanvas, agentIdx)
+                if update > 50:
+                    pool.push(conceptIDs.cpu(), finishedCanvas, agentIdx, update + 1)
 
             print(f"\rAgent {agentIdx} generation complete", end="")
 
@@ -88,7 +89,8 @@ def train(config: Config, device: str = "cuda:0"):
         # ----------------------------------------------------------------
         # DISCRIMINATOR UPDATE
         # ----------------------------------------------------------------
-        discriminatorUpdate(agents, pool, discOpts, config, device)
+        if update > 50:
+            discriminatorUpdate(agents, pool, discOpts, config, device)
 
         if update % 10 == 0:
             print()

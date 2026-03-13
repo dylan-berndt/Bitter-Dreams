@@ -7,15 +7,18 @@
     "decoderLayers": 4,
     "discriminatorLayers": 6,
     
-    "numConcepts": 32,
+    "numConcepts": 16,
     "strokeActionSize": 8,
 
     "poolSize": 256,
-    "samplesPerConcept": 32,
+    "samplesPerConcept": 256,
+
+    "burnInSteps": 200,
+    "burnInBatchSize": 32,
 
     "clip": 0.2,
     "valueCoefficient": 0.5,
-    "entropyCoefficient": 0.01,
+    "entropyCoefficient": 0.1,
     "epochs": 4,
     "gradNorm": 0.5,
 
@@ -34,8 +37,5 @@
     "lr": 3e-4,
     "batchSize": 4,
     "miniBatchSize": 16,
-    "nEpochs": 4,
-
-    "burnInSteps": 100,
-    "burnInBatchSize": 32
+    "nEpochs": 4
 }
