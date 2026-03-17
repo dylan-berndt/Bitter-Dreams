@@ -42,7 +42,7 @@ class RolloutBuffer:
         nextValue = value
 
         for t in reversed(episode):
-            valueT = 0 if t.done else nextValue
+            valueT = torch.zeros_like(t.value) if t.done else nextValue
             delta = t.reward + self.config.gamma * valueT - t.value
             gae = delta + self.config.gamma * self.config.gaeLambda * (0 if t.done else gae)
             t.advantage = gae
@@ -125,12 +125,45 @@ class ConceptPool:
         }, os.path.join(directory, f"pool{step:05d}.pt"))
 
     def _initialize(self):
+        numShapes = 3
+        numColors = len(COLORS)
         for conceptID in range(self.config.numConcepts):
-            hue = random.random()
-            angle = random.random()
-            for sample in range(self.config.samplesPerConcept):
-                canvas = randomCanvas(self.config.imageSize, self.config.maxStrokes, hue, angle)
-                self.pools[conceptID].append((canvas.cpu(), -1, 0))
+            shapeIdx = conceptID // numColors
+            colorIdx = conceptID % numColors
+            for _ in range(self.config.samplesPerConcept):
+                img = renderConcept(shapeIdx, colorIdx, self.config.imageSize)
+                self.pools[conceptID].append((img, -1, 0))
+
+
+COLORS = [
+    (0.9, 0.2, 0.2),   # red
+    (0.2, 0.8, 0.2),   # green
+    (0.2, 0.3, 0.9),   # blue
+    (0.9, 0.8, 0.1),   # yellow
+]
+
+def renderConcept(shapeIdx, colorIdx, imageSize):
+    canvas = np.ones((imageSize, imageSize, 3), dtype=np.float32)
+    r, g, b = COLORS[colorIdx]
+    ox, oy = (random.random() - 0.5) * imageSize * 0.5, (random.random() - 0.5) * imageSize * 0.5
+    cx, cy = imageSize * 0.5 + ox, imageSize * 0.5 + oy
+    size = imageSize * 0.28
+
+    yy, xx = np.mgrid[0:imageSize, 0:imageSize].astype(np.float32)
+
+    if shapeIdx == 0:   # circle
+        mask = (xx - cx) ** 2 + (yy - cy) ** 2 < size ** 2
+    elif shapeIdx == 1: # square
+        mask = (np.abs(xx - cx) < size) & (np.abs(yy - cy) < size)
+    elif shapeIdx == 2: # triangle
+        tip_y = cy - size
+        base_y = cy + size * 0.6
+        left  = (xx - cx) > -(size * (yy - tip_y) / (base_y - tip_y))
+        right = (xx - cx) <  (size * (yy - tip_y) / (base_y - tip_y))
+        mask  = left & right & (yy > tip_y) & (yy < base_y)
+
+    canvas[mask] = [r, g, b]
+    return torch.from_numpy(canvas.transpose(2, 0, 1))
 
 
 def randomCanvas(imageSize, maxStrokes, hue, angleBias):
@@ -176,7 +209,7 @@ def drawStroke(canvases: torch.Tensor, stroke: torch.Tensor) -> torch.Tensor:
     r      = stroke[:, 4].view(B, 1, 1)
     g      = stroke[:, 5].view(B, 1, 1)
     b      = stroke[:, 6].view(B, 1, 1)
-    radius = stroke[:, 7].view(B, 1, 1).clamp(0.01, 0.1)
+    radius = stroke[:, 7].view(B, 1, 1).clamp(0.05, 0.3)
 
     coords = torch.linspace(0, 1, H, device=device)
     yy, xx = torch.meshgrid(coords, coords, indexing='ij')  # (H, W)

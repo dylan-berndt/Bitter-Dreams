@@ -1,31 +1,57 @@
 {
-    "embedDim": 256,
+    "discriminator": {
+        "embedDim": 64,
+        "imageSize": 32,
+        "patchSize": 4,
+        "numHeads": 4,
+        "encoderLayers": 2,
+        "outputShape": 12,
+        "lr": 3e-4
+    },
+    "actor": {
+        "embedDim": 64,
+        "imageSize": 32,
+        "patchSize": 4,
+        "numHeads": 4,
+        "encoderLayers": 2,
+        "decoderLayers": 2,
+        "outputShape": 16,
+        "lr": 1e-3
+    },
+    "critic": {
+        "embedDim": 64,
+        "imageSize": 32,
+        "patchSize": 4,
+        "numHeads": 4,
+        "encoderLayers": 2,
+        "decoderLayers": 2,
+        "outputShape": 1,
+        "lr": 1e-3
+    },
+
     "imageSize": 32,
-    "patchSize": 4,
-    "numHeads": 4,
-    "encoderLayers": 4,
-    "decoderLayers": 4,
-    "discriminatorLayers": 6,
     
-    "numConcepts": 16,
+    "numConcepts": 12,
     "strokeActionSize": 8,
 
     "poolSize": 256,
     "samplesPerConcept": 256,
 
-    "burnInSteps": 200,
+    "burnInSteps": 400,
     "burnInBatchSize": 32,
+    "generatorBurnInSteps": 50,
+    "discriminatorSteps": 25,
 
     "clip": 0.2,
     "valueCoefficient": 0.5,
     "entropyCoefficient": 0.1,
     "epochs": 4,
-    "gradNorm": 0.5,
+    "gradNorm": 2.0,
 
     "gamma": 0.99,
     "gaeLambda": 0.95,
 
-    "includeStepReward": false,
+    "includeStepReward": true,
     "stepRewardWeight": 0.2,
     "dissimilarityWeight": 0,
 
@@ -34,8 +60,7 @@
 
     "totalUpdates": 1000,
     "numAgents": 4,
-    "lr": 3e-4,
-    "batchSize": 4,
+    "batchSize": 32,
     "miniBatchSize": 16,
     "nEpochs": 4
 }
